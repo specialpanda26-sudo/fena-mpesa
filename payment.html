@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pay - Fena Welders Shop</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f0faf2;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: #00a551;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .logo-text h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .logo-text p {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .amount-display {
+      background: linear-gradient(135deg, #00a551, #00c96a);
+      border-radius: 18px;
+      padding: 28px;
+      text-align: center;
+      margin-bottom: 28px;
+      color: white;
+    }
+
+    .amount-display .label {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .amount-display .amount {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .amount-display .currency {
+      font-size: 20px;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+
+    .field-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px 18px;
+      border: 2px solid #e8e8e8;
+      border-radius: 14px;
+      font-size: 16px;
+      font-family: 'DM Sans', sans-serif;
+      transition: border 0.2s, box-shadow 0.2s;
+      outline: none;
+      color: #111;
+    }
+
+    input:focus {
+      border-color: #00a551;
+      box-shadow: 0 0 0 4px rgba(0,165,81,0.1);
+    }
+
+    input::placeholder { color: #bbb; }
+
+    .pay-btn {
+      width: 100%;
+      padding: 17px;
+      background: #00a551;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.2px;
+    }
+
+    .pay-btn:hover { background: #009647; }
+    .pay-btn:active { transform: scale(0.98); }
+    .pay-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    .status-box {
+      margin-top: 20px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+      text-align: center;
+    }
+
+    .status-box.success {
+      background: #e8f8ef;
+      color: #00703a;
+      border: 1.5px solid #b2eac9;
+      display: block;
+    }
+
+    .status-box.error {
+      background: #fff0f0;
+      color: #c0392b;
+      border: 1.5px solid #f5c6c6;
+      display: block;
+    }
+
+    .status-box.loading {
+      background: #f0f7ff;
+      color: #1a6fb5;
+      border: 1.5px solid #b8d9f5;
+      display: block;
+    }
+
+    .mpesa-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 22px;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .mpesa-badge span {
+      font-weight: 700;
+      color: #00a551;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #b8d9f5;
+      border-top-color: #1a6fb5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-area">
+    <div class="logo-icon">🔧</div>
+    <div class="logo-text">
+      <h1>Fena Welders Shop</h1>
+      <p>Secure M-Pesa Checkout</p>
+    </div>
+  </div>
+
+  <div class="amount-display">
+    <div class="label">Amount to Pay</div>
+    <div class="amount"><span class="currency">KSh </span><span id="amountDisplay">0</span></div>
+  </div>
+
+  <div class="field-group">
+    <label>Amount (KSh)</label>
+    <input type="number" id="amount" placeholder="e.g. 500" min="1" oninput="updateAmount(this.value)" />
+  </div>
+
+  <div class="field-group">
+    <label>M-Pesa Phone Number</label>
+    <input type="tel" id="phone" placeholder="e.g. 0712 345 678" maxlength="12" />
+  </div>
+
+  <button class="pay-btn" onclick="pay()" id="payBtn">
+    💚 Pay with M-Pesa
+  </button>
+
+  <div class="status-box" id="statusBox"></div>
+
+  <div class="mpesa-badge">
+    🔒 Secured by <span>M-Pesa</span> · Safaricom
+  </div>
+</div>
+
+<script>
+  // ⚠️ CHANGE THIS to your Render.com server URL after deploying
+  const SERVER_URL = 'https://your-app.onrender.com';
+
+  function updateAmount(val) {
+    document.getElementById('amountDisplay').textContent = val || '0';
+  }
+
+  async function pay() {
+    const phone = document.getElementById('phone').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+    const btn = document.getElementById('payBtn');
+    const status = document.getElementById('statusBox');
+
+    // Basic validation
+    if (!phone || phone.length < 10) {
+      showStatus('Please enter a valid phone number (e.g. 0712345678)', 'error');
+      return;
+    }
+    if (!amount || amount < 1) {
+      showStatus('Please enter an amount', 'error');
+      return;
+    }
+
+    // Show loading
+    btn.disabled = true;
+    btn.textContent = 'Sending request...';
+    showStatus('<span class="spinner"></span> Sending STK Push to your phone...', 'loading');
+
+    try {
+      const res = await fetch(`${SERVER_URL}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, amount: parseInt(amount) })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showStatus('✅ Check your phone! Enter your M-Pesa PIN to complete payment.', 'success');
+        btn.textContent = '✅ Request Sent!';
+      } else {
+        showStatus('❌ ' + data.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '💚 Pay with M-Pesa';
+      }
+    } catch (err) {
+      showStatus('❌ Could not connect to server. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = '💚 Pay with M-Pesa';
+    }
+  }
+
+  function showStatus(msg, type) {
+    const box = document.getElementById('statusBox');
+    box.innerHTML = msg;
+    box.className = 'status-box ' + type;
+  }
+</script>
+
+</body>
+</html>
