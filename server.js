@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -11,9 +12,14 @@ const CONSUMER_KEY = 'u2rA5TpuKZMzgo5HNMA0Ns1QFAiMpHxGbcA5ufAVz1DVyCso';
 const CONSUMER_SECRET = 'kSIF157bBzZIAjWdNnk1vAJvXUDLeiCdpdqmGmFLjiuadtBiObbylwEd62qsAW0b';
 const SHORTCODE = '174379'; // Sandbox shortcode (replace with 5408029 in production)
 const PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'; // Sandbox passkey
-const CALLBACK_URL = 'https://your-app.onrender.com/callback'; // Update after deploying
+const CALLBACK_URL = 'https://fena-mpesa.onrender.com/callback';
 
 const BASE_URL = 'https://sandbox.safaricom.co.ke'; // Change to https://api.safaricom.co.ke for production
+
+// Serve payment page at /payment
+app.get('/payment', (req, res) => {
+  res.sendFile(path.join(__dirname, 'payment.html'));
+});
 
 // Get access token
 async function getToken() {
@@ -77,11 +83,10 @@ app.post('/pay', async (req, res) => {
   }
 });
 
-// M-Pesa callback (Safaricom sends payment result here)
+// M-Pesa callback
 app.post('/callback', (req, res) => {
   const data = req.body;
   console.log('Payment callback received:', JSON.stringify(data, null, 2));
-  // Here you can save to database, update order status, etc.
   res.json({ ResultCode: 0, ResultDesc: 'Success' });
 });
 
@@ -89,3 +94,4 @@ app.get('/', (req, res) => res.send('Fena Welders Shop - M-Pesa Server Running â
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  
