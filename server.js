@@ -14,12 +14,13 @@ async function getToken() {
   const r = await fetch(`${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${auth}` }
   });
-  const d = await r.json();
-  console.log('Token result:', d);
+  const text = await r.text();
+  console.log('Token raw response:', text);
+  const d = JSON.parse(text);
   return d.access_token;
 }
 
-app.get('/', (req, res) => res.send('Fena Welders Shop - Running ✅'));
+app.get('/', (req, res) => res.send('Fena Welders Shop - Running OK'));
 
 app.get('/payment', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
@@ -38,7 +39,7 @@ body{font-family:sans-serif;background:#f0faf2;min-height:100vh;display:flex;ali
 h1{font-size:18px;color:#111}
 p{font-size:13px;color:#888}
 .green-box{background:linear-gradient(135deg,#00a551,#00c96a);border-radius:16px;padding:24px;text-align:center;color:white;margin-bottom:24px}
-.green-box small{font-size:12px;opacity:0.8;text-transform:uppercase}
+.green-box small{font-size:12px;opacity:0.8;text-transform:uppercase;display:block;margin-bottom:6px}
 .green-box big{font-size:40px;font-weight:700;display:block}
 label{display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px}
 input{width:100%;padding:14px;border:2px solid #eee;border-radius:12px;font-size:16px;margin-bottom:16px;outline:none}
@@ -58,34 +59,62 @@ button:disabled{background:#aaa}
     <div><h1>Fena Welders Shop</h1><p>M-Pesa Secure Checkout</p></div>
   </div>
   <div class="green-box">
-    <small>Amount to Pay</small>
+    <small>AMOUNT TO PAY</small>
     <big>KSh <span id="d">0</span></big>
   </div>
   <label>Amount (KSh)</label>
-  <input type="number" id="amt" placeholder="e.g. 100" oninput="document.getElementById('d').textContent=this.value||'0'">
+  <input type="number" id="amt" placeholder="e.g. 100" min="1">
   <label>M-Pesa Phone Number</label>
   <input type="tel" id="phn" placeholder="e.g. 0712345678">
   <button id="btn" onclick="pay()">💚 Pay with M-Pesa</button>
   <div class="msg" id="msg"></div>
 </div>
 <script>
+document.getElementById('amt').addEventListener('input', function(){
+  document.getElementById('d').textContent = this.value || '0';
+});
+
 async function pay(){
-  const phone=document.getElementById('phn').value.trim();
-  const amount=document.getElementById('amt').value.trim();
-  const btn=document.getElementById('btn');
-  const msg=document.getElementById('msg');
-  if(!phone||phone.length<10){show('Enter a valid phone number e.g. 0712345678','err');return;}
-  if(!amount||amount<1){show('Enter an amount','err');return;}
-  btn.disabled=true;btn.textContent='Sending...';
-  show('Sending STK Push to your phone...','wait');
-  try{
-    const r=await fetch('/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,amount:parseInt(amount)})});
-    const d=await r.json();
-    if(d.success){show('✅ Check your phone! Enter your M-Pesa PIN to complete.','ok');btn.textContent='✅ Request Sent!';}
-    else{show('❌ '+d.message,'err');btn.disabled=false;btn.textContent='💚 Pay with M-Pesa';}
-  }catch(e){show('❌ '+e.message,'err');btn.disabled=false;btn.textContent='💚 Pay with M-Pesa';}
+  const phone = document.getElementById('phn').value.trim();
+  const amount = document.getElementById('amt').value.trim();
+  const btn = document.getElementById('btn');
+
+  if(!phone || phone.length < 10){ show('Please enter a valid phone number e.g. 0712345678','err'); return; }
+  if(!amount || parseInt(amount) < 1){ show('Please enter an amount','err'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  show('Sending request to Safaricom...','wait');
+
+  try {
+    const res = await fetch('/pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone, amount: parseInt(amount) })
+    });
+    const text = await res.text();
+    console.log('Server response:', text);
+    const data = JSON.parse(text);
+    if(data.success){
+      show('✅ Success! Check your phone and enter your M-Pesa PIN.','ok');
+      btn.textContent = '✅ Request Sent!';
+    } else {
+      show('❌ ' + data.message,'err');
+      btn.disabled = false;
+      btn.textContent = '💚 Pay with M-Pesa';
+    }
+  } catch(e) {
+    show('❌ Error: ' + e.message,'err');
+    btn.disabled = false;
+    btn.textContent = '💚 Pay with M-Pesa';
+  }
 }
-function show(t,c){const m=document.getElementById('msg');m.textContent=t;m.className='msg '+c;}
+
+function show(t,c){
+  const m = document.getElementById('msg');
+  m.textContent = t;
+  m.className = 'msg ' + c;
+}
 </script>
 </body>
 </html>`);
@@ -94,32 +123,61 @@ function show(t,c){const m=document.getElementById('msg');m.textContent=t;m.clas
 app.post('/pay', async (req, res) => {
   try {
     const { phone, amount } = req.body;
-    console.log('Received:', phone, amount);
+    console.log('Pay request - phone:', phone, 'amount:', amount);
+
     const formattedPhone = phone.startsWith('0') ? '254' + phone.slice(1) : phone;
+    console.log('Formatted phone:', formattedPhone);
+
     const token = await getToken();
-    if (!token) { return res.json({ success: false, message: 'Could not get token from Safaricom' }); }
-    const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
-    const password = Buffer.from(`${SHORTCODE}${PASSKEY}${timestamp}`).toString('base64');
+    if(!token){ return res.json({ success: false, message: 'Could not get Safaricom token' }); }
+    console.log('Got token:', token.substring(0,10) + '...');
+
+    const now = new Date();
+    const timestamp = now.getFullYear().toString() +
+      String(now.getMonth()+1).padStart(2,'0') +
+      String(now.getDate()).padStart(2,'0') +
+      String(now.getHours()).padStart(2,'0') +
+      String(now.getMinutes()).padStart(2,'0') +
+      String(now.getSeconds()).padStart(2,'0');
+    console.log('Timestamp:', timestamp);
+
+    const password = Buffer.from(SHORTCODE + PASSKEY + timestamp).toString('base64');
+
     const body = {
-      BusinessShortCode: SHORTCODE, Password: password, Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline', Amount: amount,
-      PartyA: formattedPhone, PartyB: SHORTCODE, PhoneNumber: formattedPhone,
-      CallBackURL: CALLBACK_URL, AccountReference: 'FenaWelders', TransactionDesc: 'Payment'
+      BusinessShortCode: SHORTCODE,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: 'CustomerPayBillOnline',
+      Amount: amount,
+      PartyA: formattedPhone,
+      PartyB: SHORTCODE,
+      PhoneNumber: formattedPhone,
+      CallBackURL: CALLBACK_URL,
+      AccountReference: 'FenaWelders',
+      TransactionDesc: 'Payment'
     };
+
+    console.log('Sending STK push...');
     const stkRes = await fetch(`${BASE_URL}/mpesa/stkpush/v1/processrequest`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(body)
     });
-    const data = await stkRes.json();
-    console.log('STK:', JSON.stringify(data));
-    if (data.ResponseCode === '0') {
-      res.json({ success: true, message: 'STK Push sent!' });
+
+    const rawText = await stkRes.text();
+    console.log('STK raw response:', rawText);
+    const data = JSON.parse(rawText);
+
+    if(data.ResponseCode === '0'){
+      res.json({ success: true, message: 'STK Push sent successfully!' });
     } else {
-      res.json({ success: false, message: data.errorMessage || data.ResponseDescription || 'Failed' });
+      res.json({ success: false, message: data.errorMessage || data.ResponseDescription || 'Payment failed' });
     }
-  } catch (e) {
-    console.error(e);
+  } catch(e) {
+    console.error('Error:', e.message);
     res.json({ success: false, message: e.message });
   }
 });
@@ -131,3 +189,4 @@ app.post('/callback', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Server started on port ' + PORT));
+                     
